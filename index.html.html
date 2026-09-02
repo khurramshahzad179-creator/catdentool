@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cat Den Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;1,600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --ink:#161428; --panel:#211E38; --cream:#FBF4E4;
+    --gold:#F4B942; --coral:#F2694F; --muted:#B9B4CE;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:#242238; font-family:'Nunito',sans-serif; color:var(--cream); }
+
+  .controls{
+    position:sticky; top:0; z-index:50;
+    background:#1B1930; border-bottom:1px solid rgba(255,255,255,0.08);
+    padding:18px 28px; display:flex; flex-wrap:wrap; align-items:flex-end; gap:16px;
+  }
+  .controls h2{ font-family:'Baloo 2',sans-serif; font-size:22px; margin:0 0 6px 0; color:var(--gold); width:100%; }
+  .field{ display:flex; flex-direction:column; gap:4px; }
+  .field label{ font-size:12px; color:var(--muted); font-weight:700; }
+  select, input[type=text], input[type=password], input[type=number]{
+    font-family:'Nunito',sans-serif; font-size:14px; padding:8px 10px; border-radius:8px;
+    border:1px solid rgba(255,255,255,0.15); background:#2A2743; color:var(--cream); min-width:140px;
+  }
+  .mode-toggle{ display:flex; gap:6px; background:#2A2743; padding:4px; border-radius:999px; }
+  .mode-toggle button{
+    border:none; background:transparent; color:var(--muted); font-family:'Nunito',sans-serif;
+    font-weight:700; font-size:13px; padding:7px 16px; border-radius:999px; cursor:pointer;
+  }
+  .mode-toggle button.active{ background:var(--gold); color:var(--ink); }
+  .btn{
+    font-family:'Nunito',sans-serif; font-weight:700; font-size:14px; color:var(--ink);
+    background:var(--gold); border:none; padding:10px 20px; border-radius:999px; cursor:pointer;
+  }
+  .btn:hover{ background:#f7c766; }
+  .btn.secondary{ background:transparent; color:var(--cream); border:1px solid rgba(255,255,255,0.25); }
+  .btn.secondary:hover{ background:rgba(255,255,255,0.08); }
+  .btn:disabled{ opacity:0.5; cursor:not-allowed; }
+
+  .music-panel{
+    width:100%; background:#241F3D; border-radius:10px; padding:14px 18px;
+    display:none; flex-wrap:wrap; align-items:center; gap:14px; margin-top:4px;
+  }
+  .music-panel.show{ display:flex; }
+  .music-panel .title{ font-family:'Baloo 2',sans-serif; font-size:16px; color:var(--gold); width:100%; }
+  .music-panel a{ color:var(--cream); text-decoration:underline; font-size:13px; }
+  .music-status{ font-size:13px; color:var(--muted); }
+
+  .status{ padding:10px 28px; font-size:14px; color:var(--muted); }
+  .status.error{ color:#F2694F; }
+
+  .grid{ display:flex; flex-wrap:wrap; gap:26px; padding:26px 28px 60px; }
+  .stage{ display:flex; flex-direction:column; align-items:center; gap:10px; width:260px; }
+  .frame{ width:260px; height:462px; overflow:hidden; border-radius:10px; background:#000; position:relative; }
+  .poster{
+    width:1080px; height:1920px; transform:scale(0.2407); transform-origin:top left;
+    background:#000; color:var(--cream); position:relative; overflow:hidden;
+  }
+  .poster.photo{ height:1350px; transform:scale(0.2407); }
+  .poster img, .poster video{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .scrim-top{ position:absolute; left:0; right:0; top:0; height:32%; background:linear-gradient(180deg, rgba(10,9,18,0.75) 0%, rgba(10,9,18,0) 100%); }
+  .scrim-bottom{ position:absolute; left:0; right:0; bottom:0; height:44%; background:linear-gradient(180deg, rgba(10,9,18,0) 0%, rgba(10,9,18,0.92) 55%, rgba(10,9,18,0.98) 100%); }
+  .tag{ position:absolute; top:4%; left:5.5%; display:flex; align-items:center; gap:12px; font-family:'Nunito',sans-serif; font-weight:700; font-size:32px; color:var(--gold); }
+  .tag .dot{ width:12px;height:12px;border-radius:50%;background:var(--coral); }
+  h1.hook{
+    position:absolute; left:5.5%; right:5.5%; bottom:6%; font-family:'Baloo 2',sans-serif; font-weight:700;
+    font-size:80px; line-height:1.12; margin:0; color:var(--cream); text-shadow:0 2px 18px rgba(0,0,0,0.35); outline:none;
+  }
+  h1.hook[contenteditable="true"]:hover, h1.hook[contenteditable="true"]:focus{ box-shadow:0 0 0 4px rgba(244,185,66,0.9); border-radius:10px; }
+
+  .actions{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+  .actions .btn{ font-size:12px; padding:6px 14px; }
+  .edit-hint{ font-size:11px; color:var(--muted); text-align:center; }
+  .caption-box{ width:260px; background:#1B1930; border-radius:10px; padding:10px 12px; font-size:12px; color:var(--muted); line-height:1.4; max-height:70px; overflow:auto; }
+  .progress{ font-size:11px; color:var(--gold); text-align:center; min-height:14px; }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <h2>Cat Den Studio</h2>
+
+  <div class="field">
+    <label>Post type</label>
+    <div class="mode-toggle">
+      <button id="modePhotoBtn" class="active">Photo</button>
+      <button id="modeVideoBtn">Video</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="source">Source</label>
+    <select id="source">
+      <option value="pixabay">Pixabay</option>
+      <option value="pexels">Pexels</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="apikey">API key</label>
+    <input type="password" id="apikey" placeholder="Paste your API key">
+  </div>
+
+  <div class="field">
+    <label for="pagename">Page name</label>
+    <input type="text" id="pagename" value="Cat Den">
+  </div>
+
+  <div class="field">
+    <label for="batchsize">Batch size</label>
+    <input type="number" id="batchsize" value="6" min="1" max="20">
+  </div>
+
+  <button class="btn" id="generateBtn">Generate batch</button>
+  <button class="btn secondary" id="downloadAllBtn">Download all as ZIP</button>
+  <button class="btn secondary" id="clearBtn">Clear all</button>
+
+  <div class="music-panel" id="musicPanel">
+    <div class="title">Background music (optional, for videos only)</div>
+    <span class="music-status" id="musicStatus">No track loaded — videos export silent unless you add one.</span>
+    <input type="file" id="musicFile" accept="audio/*">
+    <a href="https://pixabay.com/music/search/cute%20pet%20background%20music/" target="_blank" rel="noopener">Browse Pixabay Music ↗</a>
+    <a href="https://mixkit.co/free-stock-music/mood/happy/" target="_blank" rel="noopener">Browse Mixkit Happy ↗</a>
+  </div>
+</div>
+
+<div class="status" id="status">Paste your Pixabay or Pexels API key, pick Photo or Video, then click "Generate batch". Everything downloads straight from this one page — no extra files needed.</div>
+
+<div class="grid" id="grid"></div>
+
+<script>
+const FACTS = [
+"A cat's whiskers are exactly as wide as its body.",
+"Whisker follicles have more nerve endings than a human fingertip.",
+"Forward whiskers mean curiosity, flat whiskers mean fear.",
+"Cats have a third eyelid most owners never notice.",
+"A cat's eyes take up nearly half its skull.",
+"Cats can't taste sweetness at all.",
+"A cat's tongue is covered in tiny backward-facing hooks.",
+"Those tongue hooks double as a built-in hairbrush.",
+"Cats have 32 muscles controlling each ear.",
+"A cat can rotate its ears almost 180 degrees.",
+"Cats hear sounds two octaves higher than humans can.",
+"A cat's nose print is as unique as a human fingerprint.",
+"Cats have a scent gland in their cheeks they rub on things they love.",
+"That head-bump is a cat literally marking you as its own.",
+"Cats sleep for around 70% of their lives.",
+"A house cat can sprint faster than Usain Bolt over short distances.",
+"Cats walk like camels, moving both legs on one side together.",
+"A cat's collarbone floats free, letting it squeeze through tiny gaps.",
+"Cats can't climb straight down a tree because their claws curve the wrong way.",
+"Kneading is a leftover habit from nursing as a kitten.",
+"Purring can happen on both the inhale and the exhale.",
+"Cats purr in a frequency range linked to helping bones heal.",
+"Cats sometimes purr while injured, not only when happy.",
+"A cat's purr can lower its own heart rate and stress.",
+"Newborn kittens can purr within days of being born.",
+"Cats barely meow at each other — that sound is mostly for humans.",
+"Adult cats developed meowing specifically to talk to us.",
+"Every cat has its own distinct meow vocabulary with its owner.",
+"A slow blink from a cat is basically a kiss.",
+"Slow blinking back at your cat can build real trust.",
+"A cat's tail carries an entire emotional vocabulary of its own.",
+"A puffed-up tail means startled, not necessarily angry.",
+"Cats have scent glands on their paws that mark territory with every scratch.",
+"Scratching is about leaving a scent, not just sharpening claws.",
+"A cat rubbing your leg is trading scent, not just showing love.",
+"Cats can make over 100 distinct vocal sounds.",
+"Dogs, for comparison, can only make about 10.",
+"A cat's hearing range beats both dogs and humans combined.",
+"Cats are most active at dawn and dusk, not midnight.",
+"Cats can see in light six times dimmer than humans need.",
+"Cats are colorblind to red but see blues and greens clearly.",
+"A cat's peripheral vision is wider than a human's.",
+"The glow in a cat's eyes at night comes from a mirror-like layer behind the retina.",
+"That reflective layer doubles a cat's night vision.",
+"Cats have an organ that lets them literally taste smells in the air.",
+"A cat's whiskers can sense air currents from across a room.",
+"Whiskers even grow on the backs of a cat's front legs.",
+"Cats have nearly 250 bones, about 40 more than humans.",
+"A cat's spine is far more flexible than a human's.",
+"Cats always seem to land on their feet thanks to the righting reflex.",
+"That reflex can kick in from as little as one foot of falling height.",
+"A cat's tail helps it balance mid-air like a built-in gyroscope.",
+"Cats can jump roughly six times their own body length.",
+"Most cats have 18 claws in total.",
+"Polydactyl cats are born with extra toes, sometimes seven per paw.",
+"Cats sharpen claws by shedding the outer layer, not filing them down.",
+"Domestic cats share about 95% of their DNA with tigers.",
+"A house cat's hunting instincts are nearly identical to a lion's.",
+"A dead mouse left on your doorstep is a cat trying to teach you to hunt.",
+"Cats bury leftover food to hide it from rivals.",
+"Cats are one of the only animals that domesticated themselves.",
+"Ancient farmers didn't tame cats — cats moved in for the mice.",
+"Cats have lived alongside humans for at least 10,000 years.",
+"Ancient Egyptians could face the death penalty for killing a cat.",
+"Egyptians used to shave their eyebrows in mourning when a cat died.",
+"The word tabby comes from a striped silk once made in Baghdad.",
+"Ships carried cats for centuries just to control rodents on board.",
+"The oldest known pet cat burial dates back over 9,000 years.",
+"Cats were worshipped in ancient Egypt as the goddess Bastet.",
+"A group of cats is called a clowder.",
+"A group of kittens is called a kindle.",
+"Male cats are called toms, and females are called queens.",
+"A cat's body temperature runs about two degrees warmer than a human's.",
+"A cat's resting heart rate is more than double a human's.",
+"Falling from a slightly higher window can actually be safer for a cat than a shorter one.",
+"A cat tests tight spaces with its whiskers before its whole body follows.",
+"Kittens are born blind, deaf, and totally dependent on their mother.",
+"A newborn kitten's eyes stay shut for about a week to ten days.",
+"Kitten eyes are almost always blue at first, no matter their adult color.",
+"True eye color in cats usually settles in around three months old.",
+"A mother cat purrs to guide her kittens even before they can see.",
+"Play fighting between kittens is how they learn bite inhibition.",
+"Cats have 26 baby teeth and 30 adult teeth.",
+"Cats are obligate carnivores, meaning their bodies require meat to survive.",
+"Cats can't produce their own taurine, an amino acid found only in animal tissue.",
+"Cats can technically survive without any carbohydrates at all.",
+"A cat's whiskers shed and regrow just like its fur.",
+"Trimming a cat's whiskers can genuinely throw off its sense of balance.",
+"A cat's sense of smell is roughly 14 times stronger than a human's.",
+"Cats have around 200 million scent receptors to our 5 million.",
+"A cat rubbing its face on furniture leaves an invisible scent map of its home.",
+"Studies show cats do know their names, they just often ignore them.",
+"A cat's brain is about 90% similar in structure to a human brain.",
+"Cats form real attachment bonds with owners, much like children do with parents.",
+"A cat headbutt, called bunting, is one of the highest compliments a cat gives.",
+"Some cats chatter their teeth when watching birds through a window.",
+"A cat's tail contains almost 10% of all the bones in its body.",
+"A tail wrapped gently around you is a genuine sign of affection.",
+"A twitching tail tip usually means focus, not necessarily anger.",
+"Cats can sweat, but only through the pads of their paws.",
+"A cat's rough tongue can strip meat clean off a bone in the wild.",
+"Grooming helps cats regulate their body temperature, not just stay clean.",
+"Cats can spend up to half their waking hours grooming themselves.",
+"Overgrooming in cats can sometimes be a visible sign of stress.",
+"Indoor cats often live well into their teens, sometimes past twenty.",
+"The oldest cat on record lived to be 38 years old.",
+"Spaying or neutering can add real years to a cat's expected lifespan.",
+"Cats often choose the highest point in a room simply to feel safe.",
+"A cat hiding under furniture is often just managing stress.",
+"Tight spaces feel secure to cats because they limit exposure to threats.",
+"That's the real reason cats love sitting in boxes or laundry baskets.",
+"Kneading a blanket often recreates the comfort of nursing as a kitten.",
+"Cats can recognize roughly 20 to 30 words tied to their routine.",
+"A cat's pupils dilate during excitement or play, not just in low light.",
+"Fully dilated pupils in bright light can be a sign of stress.",
+"Flattened ears, sometimes called airplane ears, usually mean a threatened cat.",
+"A relaxed cat's ears typically sit upright and slightly forward.",
+"Some cats clearly favor either their left or right paw.",
+"A cat chasing its own tail is often simply bored.",
+"Cats can recognize themselves in a mirror but usually just don't care.",
+"A cat rolling onto its back is often a sign of trust, not a belly invitation.",
+"Many cats treat a belly touch as a trap, even mid-roll.",
+"A cat's whisker pattern is different on every individual cat.",
+"Long-haired and short-haired cats actually shed at similar overall rates.",
+"Regular brushing reduces hairballs far more than grooming alone.",
+"A hairball is usually just fur a cat swallowed while grooming itself.",
+"Cats instinctively bury waste to hide their scent from predators.",
+"Cats generally prefer a roomy, uncovered, and very clean litter box.",
+"Cats hide illness exceptionally well as a survival instinct.",
+"A change in litter box habits is often the earliest sign something is wrong.",
+"Orange tabby cats are almost always male, thanks to how the color gene works.",
+"Calico cats are almost always female for the same genetic reason.",
+"The Maine Coon is one of the largest domestic cat breeds, sometimes topping 20 pounds.",
+"The Singapura is among the smallest recognized cat breeds in the world.",
+"Sphynx cats aren't actually hairless, they're covered in a fine peach fuzz.",
+"Scottish Fold kittens are born with straight ears that fold within weeks.",
+"The Turkish Van breed is famous for genuinely enjoying water.",
+"Most cats avoid water, likely because their ancestors lived near dry oases.",
+"Siamese kittens are actually born completely white.",
+"Siamese coat color develops based on temperature, darker at the cooler extremities.",
+"Savannah cats are a hybrid between a domestic cat and a wild African serval.",
+"Bengal cats were bred to echo the wild, spotted look of a leopard.",
+"Cats can be trained to walk on a leash with enough patience.",
+"Clicker training works on cats using the same principles as it does on dogs.",
+"Cats blink far less often than humans, especially when focused.",
+"Cats mark territory vertically with claw marks to appear larger to rivals.",
+"Cats have scent glands between their toes that leave a mark with every scratch.",
+"A tail held straight up like a flagpole is a universal cat greeting.",
+"That upright flag tail is one of the clearest signs of a happy cat.",
+"Cats trill, a sound between a meow and a purr, mainly as a friendly greeting.",
+"Mother cats trill at kittens to get them to follow her.",
+"A cat's ears can independently swivel to pinpoint a sound's exact source.",
+"Cats can detect changes in barometric pressure before a storm arrives.",
+"A cat's whisker span acts like a built-in ruler for judging tight gaps.",
+"A cat's back paws almost always land in the exact spot its front paws did.",
+"Cats can drink water using a rapid tongue flick faster than the eye can follow.",
+"Some cats show a genuine preference for running water over a still bowl.",
+"A cat's whisker fatigue can make even a full food bowl feel stressful.",
+"A bored indoor cat will often invent its own games with nothing but a bottle cap."
+];
+
+const QUERIES_PIXABAY_PHOTO = ["cat","kitten","cat portrait","cat face","sleeping cat","cute cat","tabby cat","black cat","orange cat","cat playing","cat outdoors","cat closeup","fluffy cat","cat eyes","cat whiskers"];
+const QUERIES_PEXELS_PHOTO = ["cat","kitten","cat portrait","cat face","sleeping cat","cute cat","tabby cat","black cat","orange cat","cat playing","cat outdoors","fluffy cat","cat eyes"];
+const QUERIES_PIXABAY_VIDEO = ["cat","kitten","cute cat","cat playing","cat closeup","fluffy cat","cat sleeping","cat outdoors"];
+const QUERIES_PEXELS_VIDEO = ["cat","kitten","cute cat","cat playing","cat closeup","fluffy cat","cat sleeping"];
+
+function loadJSON(key, fallback){ try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; } }
+function saveJSON(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
+
+let usedFactIdx = loadJSON('catden_used_facts', []);
+let usedPhotoIds = loadJSON('catden_used_photos', []);
+let usedVideoIds = loadJSON('catden_used_videos', []);
+
+let mode = 'photo'; // 'photo' | 'video'
+let musicFile = null;
+
+const apiKeyInput = document.getElementById('apikey');
+const sourceSelect = document.getElementById('source');
+const pageNameInput = document.getElementById('pagename');
+const statusEl = document.getElementById('status');
+const grid = document.getElementById('grid');
+const musicPanel = document.getElementById('musicPanel');
+const musicFileInput = document.getElementById('musicFile');
+const musicStatus = document.getElementById('musicStatus');
+const modePhotoBtn = document.getElementById('modePhotoBtn');
+const modeVideoBtn = document.getElementById('modeVideoBtn');
+
+apiKeyInput.value = localStorage.getItem('catden_apikey') || '';
+sourceSelect.value = localStorage.getItem('catden_source') || 'pixabay';
+pageNameInput.value = localStorage.getItem('catden_pagename') || 'Cat Den';
+apiKeyInput.addEventListener('change', ()=> localStorage.setItem('catden_apikey', apiKeyInput.value));
+sourceSelect.addEventListener('change', ()=> localStorage.setItem('catden_source', sourceSelect.value));
+pageNameInput.addEventListener('change', ()=> localStorage.setItem('catden_pagename', pageNameInput.value));
+
+musicFileInput.addEventListener('change', () => {
+  musicFile = musicFileInput.files[0] || null;
+  musicStatus.textContent = musicFile ? ('Loaded: ' + musicFile.name) : 'No track loaded — videos export silent unless you add one.';
+});
+
+modePhotoBtn.addEventListener('click', () => setMode('photo'));
+modeVideoBtn.addEventListener('click', () => setMode('video'));
+function setMode(m){
+  mode = m;
+  modePhotoBtn.classList.toggle('active', m==='photo');
+  modeVideoBtn.classList.toggle('active', m==='video');
+  musicPanel.classList.toggle('show', m==='video');
+}
+
+function setStatus(msg, isError){
+  statusEl.textContent = msg;
+  statusEl.className = 'status' + (isError ? ' error' : '');
+}
+
+function pickFacts(n){
+  let pool = FACTS.map((f,i)=>i).filter(i => !usedFactIdx.includes(i));
+  if(pool.length < n){ usedFactIdx = []; pool = FACTS.map((f,i)=>i); }
+  const chosen = [];
+  for(let k=0;k<n && pool.length>0;k++){
+    const r = Math.floor(Math.random()*pool.length);
+    const idx = pool.splice(r,1)[0];
+    chosen.push(idx);
+    usedFactIdx.push(idx);
+  }
+  saveJSON('catden_used_facts', usedFactIdx);
+  return chosen.map(i => FACTS[i]);
+}
+
+// ---------- fetchers ----------
+async function fetchPixabayPhoto(key){
+  for(let a=0;a<6;a++){
+    const q = QUERIES_PIXABAY_PHOTO[Math.floor(Math.random()*QUERIES_PIXABAY_PHOTO.length)];
+    const page = 1 + Math.floor(Math.random()*25);
+    const res = await fetch(`https://pixabay.com/api/?key=${encodeURIComponent(key)}&q=${encodeURIComponent(q)}&image_type=photo&orientation=vertical&safesearch=true&per_page=20&page=${page}`);
+    if(!res.ok) throw new Error('Pixabay request failed: ' + res.status);
+    const data = await res.json();
+    const hits = (data.hits||[]).filter(h=>!usedPhotoIds.includes('px_'+h.id));
+    if(hits.length){
+      const pick = hits[Math.floor(Math.random()*hits.length)];
+      usedPhotoIds.push('px_'+pick.id); saveJSON('catden_used_photos', usedPhotoIds);
+      return { url: pick.largeImageURL || pick.webformatURL };
+    }
+  }
+  throw new Error('Could not find a fresh Pixabay photo, try again');
+}
+async function fetchPexelsPhoto(key){
+  for(let a=0;a<6;a++){
+    const q = QUERIES_PEXELS_PHOTO[Math.floor(Math.random()*QUERIES_PEXELS_PHOTO.length)];
+    const page = 1 + Math.floor(Math.random()*25);
+    const res = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(q)}&per_page=20&page=${page}&orientation=portrait`, { headers:{ Authorization:key } });
+    if(!res.ok) throw new Error('Pexels request failed: ' + res.status);
+    const data = await res.json();
+    const hits = (data.photos||[]).filter(p=>!usedPhotoIds.includes('pe_'+p.id));
+    if(hits.length){
+      const pick = hits[Math.floor(Math.random()*hits.length)];
+      usedPhotoIds.push('pe_'+pick.id); saveJSON('catden_used_photos', usedPhotoIds);
+      return { url: pick.src.large2x || pick.src.large };
+    }
+  }
+  throw new Error('Could not find a fresh Pexels photo, try again');
+}
+async function fetchPixabayVideo(key){
+  for(let a=0;a<6;a++){
+    const q = QUERIES_PIXABAY_VIDEO[Math.floor(Math.random()*QUERIES_PIXABAY_VIDEO.length)];
+    const page = 1 + Math.floor(Math.random()*15);
+    const res = await fetch(`https://pixabay.com/api/videos/?key=${encodeURIComponent(key)}&q=${encodeURIComponent(q)}&safesearch=true&per_page=20&page=${page}`);
+    if(!res.ok) throw new Error('Pixabay video request failed: ' + res.status);
+    const data = await res.json();
+    const hits = (data.hits||[]).filter(h=>!usedVideoIds.includes('px_'+h.id));
+    if(hits.length){
+      const pick = hits[Math.floor(Math.random()*hits.length)];
+      usedVideoIds.push('px_'+pick.id); saveJSON('catden_used_videos', usedVideoIds);
+      const v = pick.videos.medium || pick.videos.small || pick.videos.large;
+      return { url: v.url };
+    }
+  }
+  throw new Error('Could not find a fresh Pixabay video, try again');
+}
+async function fetchPexelsVideo(key){
+  for(let a=0;a<6;a++){
+    const q = QUERIES_PEXELS_VIDEO[Math.floor(Math.random()*QUERIES_PEXELS_VIDEO.length)];
+    const page = 1 + Math.floor(Math.random()*15);
+    const res = await fetch(`https://api.pexels.com/videos/search?query=${encodeURIComponent(q)}&per_page=20&page=${page}&orientation=portrait`, { headers:{ Authorization:key } });
+    if(!res.ok) throw new Error('Pexels video request failed: ' + res.status);
+    const data = await res.json();
+    const hits = (data.videos||[]).filter(v=>!usedVideoIds.includes('pe_'+v.id));
+    if(hits.length){
+      const pick = hits[Math.floor(Math.random()*hits.length)];
+      usedVideoIds.push('pe_'+pick.id); saveJSON('catden_used_videos', usedVideoIds);
+      const files = (pick.video_files||[]).filter(f=>f.file_type==='video/mp4').sort((a,b)=>(b.width||0)-(a.width||0));
+      const chosen = files.find(f=>f.width && f.width<=1280) || files[0];
+      return { url: chosen.link };
+    }
+  }
+  throw new Error('Could not find a fresh Pexels video, try again');
+}
+
+async function fetchMedia(source, m){
+  if(m==='photo') return source==='pixabay' ? fetchPixabayPhoto(apiKeyInput.value.trim()) : fetchPexelsPhoto(apiKeyInput.value.trim());
+  return source==='pixabay' ? fetchPixabayVideo(apiKeyInput.value.trim()) : fetchPexelsVideo(apiKeyInput.value.trim());
+}
+
+// ---------- card building ----------
+let cardCounter = 0;
+
+function buildCard(mediaUrl, factText, pageName, cardId, cardMode){
+  const stage = document.createElement('div');
+  stage.className = 'stage';
+  stage.dataset.source = sourceSelect.value;
+  stage.dataset.mode = cardMode;
+
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+
+  const dlBtn = document.createElement('button');
+  dlBtn.className = 'btn';
+  dlBtn.textContent = cardMode==='photo' ? 'Download PNG' : 'Download video';
+  actions.appendChild(dlBtn);
+
+  const changeBtn = document.createElement('button');
+  changeBtn.className = 'btn secondary';
+  changeBtn.textContent = cardMode==='photo' ? 'Change photo' : 'Change video';
+  actions.appendChild(changeBtn);
+
+  const frame = document.createElement('div');
+  frame.className = 'frame';
+
+  const card = document.createElement('div');
+  card.className = 'poster' + (cardMode==='photo' ? ' photo' : '');
+  card.id = cardId;
+  const mediaTag = cardMode==='photo'
+    ? `<img crossorigin="anonymous" src="${mediaUrl}" alt="Cat photo">`
+    : `<video crossorigin="anonymous" src="${mediaUrl}" muted loop autoplay playsinline></video>`;
+  card.innerHTML = `
+    ${mediaTag}
+    <div class="scrim-top"></div>
+    <div class="scrim-bottom"></div>
+    <div class="tag"><span class="dot"></span>${pageName}</div>
+    <h1 class="hook" contenteditable="true" spellcheck="false">${factText}</h1>
+  `;
+
+  frame.appendChild(card);
+  stage.appendChild(actions);
+  stage.appendChild(frame);
+
+  const hint = document.createElement('div');
+  hint.className = 'edit-hint';
+  hint.textContent = 'Click the headline to edit it';
+  stage.appendChild(hint);
+
+  const progEl = document.createElement('div');
+  progEl.className = 'progress';
+  stage.appendChild(progEl);
+
+  const cap = document.createElement('div');
+  cap.className = 'caption-box';
+  cap.textContent = factText;
+  stage.appendChild(cap);
+
+  card.querySelector('.hook').addEventListener('input', function(){ cap.textContent = this.textContent; });
+
+  dlBtn.onclick = () => cardMode==='photo' ? downloadPhotoCard(cardId, dlBtn) : downloadVideoCard(cardId, dlBtn, progEl);
+  changeBtn.onclick = () => changeMedia(cardId, cardMode, stage.dataset.source, changeBtn);
+
+  return stage;
+}
+
+async function changeMedia(cardId, cardMode, source, btnEl){
+  const key = apiKeyInput.value.trim();
+  if(!key){ setStatus('Enter your API key first.', true); return; }
+  const el = document.getElementById(cardId);
+  const mediaEl = el.querySelector(cardMode==='photo' ? 'img' : 'video');
+  btnEl.disabled = true;
+  const orig = btnEl.textContent;
+  btnEl.textContent = 'Swapping...';
+  try{
+    const m = await fetchMedia(source, cardMode);
+    mediaEl.src = m.url;
+    if(cardMode==='video'){ mediaEl.load(); mediaEl.play().catch(()=>{}); }
+  }catch(e){
+    console.error(e);
+    setStatus('Could not fetch new media: ' + e.message, true);
+  } finally {
+    btnEl.disabled = false;
+    btnEl.textContent = orig;
+  }
+}
+
+// ---------- PHOTO export (html2canvas, proven reliable) ----------
+async function downloadPhotoCard(cardId, btnEl){
+  const el = document.getElementById(cardId);
+  if(document.activeElement) document.activeElement.blur();
+  const orig = el.style.transform;
+  el.style.transform = 'none';
+  btnEl.disabled = true;
+  const origLabel = btnEl.textContent;
+  btnEl.textContent = 'Rendering...';
+  try{
+    const canvas = await html2canvas(el, { backgroundColor:null, width:1080, height:1350, scale:2, useCORS:true });
+    const link = document.createElement('a');
+    link.download = cardId + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }catch(e){
+    console.error(e);
+    setStatus('Photo export failed: ' + e.message, true);
+  } finally {
+    el.style.transform = orig;
+    btnEl.disabled = false;
+    btnEl.textContent = origLabel;
+  }
+}
+
+// ---------- VIDEO export (native canvas + MediaRecorder, no external engine) ----------
+function pickSupportedMime(){
+  const options = [
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm',
+    'video/mp4;codecs=h264,aac',
+    'video/mp4'
+  ];
+  for(const o of options){ if(window.MediaRecorder && MediaRecorder.isTypeSupported(o)) return o; }
+  return '';
+}
+
+function wrapCanvasText(ctx, text, maxWidth){
+  const words = text.split(' ');
+  const lines = [];
+  let line = '';
+  for(const w of words){
+    const test = line ? line + ' ' + w : w;
+    if(ctx.measureText(test).width > maxWidth && line){
+      lines.push(line);
+      line = w;
+    } else {
+      line = test;
+    }
+  }
+  if(line) lines.push(line);
+  return lines;
+}
+
+function drawCover(ctx, media, W, H, naturalW, naturalH){
+  const scale = Math.max(W / naturalW, H / naturalH);
+  const dw = naturalW * scale, dh = naturalH * scale;
+  const dx = (W - dw) / 2, dy = (H - dh) / 2;
+  ctx.drawImage(media, dx, dy, dw, dh);
+}
+
+function drawOverlay(ctx, pageName, hookText, W, H){
+  let g = ctx.createLinearGradient(0,0,0,H*0.32);
+  g.addColorStop(0,'rgba(10,9,18,0.75)'); g.addColorStop(1,'rgba(10,9,18,0)');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H*0.32);
+
+  g = ctx.createLinearGradient(0,H*0.56,0,H);
+  g.addColorStop(0,'rgba(10,9,18,0)'); g.addColorStop(0.55,'rgba(10,9,18,0.92)'); g.addColorStop(1,'rgba(10,9,18,0.98)');
+  ctx.fillStyle = g; ctx.fillRect(0,H*0.56,W,H*0.44);
+
+  const padX = W*0.055;
+  ctx.beginPath();
+  ctx.arc(padX+6, H*0.052, 6, 0, Math.PI*2);
+  ctx.fillStyle = '#F2694F';
+  ctx.fill();
+  ctx.font = '700 32px "Nunito", sans-serif';
+  ctx.fillStyle = '#F4B942';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(pageName, padX+24, H*0.052);
+
+  ctx.font = '700 80px "Baloo 2", sans-serif';
+  ctx.fillStyle = '#FBF4E4';
+  ctx.textBaseline = 'alphabetic';
+  const maxWidth = W - padX*2;
+  const lines = wrapCanvasText(ctx, hookText, maxWidth);
+  const lineHeight = 90;
+  const startY = H - (H*0.06) - (lines.length-1)*lineHeight;
+  lines.forEach((ln, i) => {
+    ctx.fillText(ln, padX, startY + i*lineHeight);
+  });
+}
+
+async function downloadVideoCard(cardId, btnEl, progEl){
+  const cardEl = document.getElementById(cardId);
+  const video = cardEl.querySelector('video');
+  const pageName = cardEl.querySelector('.tag').textContent.trim();
+  const hookText = cardEl.querySelector('.hook').textContent;
+  if(document.activeElement) document.activeElement.blur();
+
+  btnEl.disabled = true;
+  const origLabel = btnEl.textContent;
+  const setProg = (m) => { if(progEl) progEl.textContent = m; };
+
+  try{
+    setProg('Preparing...');
+    const W = 1080, H = 1920;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    await document.fonts.load('700 80px "Baloo 2"');
+    await document.fonts.load('700 32px "Nunito"');
+
+    const mimeType = pickSupportedMime();
+    if(!mimeType){ throw new Error('This browser does not support recording video (try Chrome or Edge).'); }
+
+    const stream = canvas.captureStream(30);
+
+    let audioCtx=null, audioEl=null, gainNode=null;
+    const duration = isFinite(video.duration) && video.duration>0 ? video.duration : 8;
+    const fadeStart = Math.max(duration-2, 0.1);
+
+    if(musicFile){
+      audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+      audioEl = new Audio(URL.createObjectURL(musicFile));
+      audioEl.loop = true;
+      await audioEl.play().catch(()=>{});
+      const srcNode = audioCtx.createMediaElementSource(audioEl);
+      gainNode = audioCtx.createGain();
+      gainNode.gain.value = 0.55;
+      const destNode = audioCtx.createMediaStreamDestination();
+      srcNode.connect(gainNode).connect(destNode);
+      stream.addTrack(destNode.stream.getAudioTracks()[0]);
+      gainNode.gain.setValueAtTime(0.55, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.55, audioCtx.currentTime + fadeStart);
+      gainNode.gain.linearRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+    }
+
+    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 6_000_000 });
+    const chunks = [];
+    recorder.ondataavailable = (e) => { if(e.data && e.data.size>0) chunks.push(e.data); };
+
+    const done = new Promise((resolve) => { recorder.onstop = resolve; });
+
+    video.currentTime = 0;
+    await video.play().catch(()=>{});
+    const naturalW = video.videoWidth || 1080, naturalH = video.videoHeight || 1920;
+
+    setProg('Recording 0%...');
+    recorder.start();
+    const startTime = performance.now();
+
+    await new Promise((resolve) => {
+      function frame(){
+        const elapsed = (performance.now() - startTime) / 1000;
+        drawCover(ctx, video, W, H, naturalW, naturalH);
+        drawOverlay(ctx, pageName, hookText, W, H);
+        setProg('Recording ' + Math.min(100, Math.round(elapsed/duration*100)) + '%...');
+        if(elapsed < duration){
+          requestAnimationFrame(frame);
+        } else {
+          resolve();
+        }
+      }
+      requestAnimationFrame(frame);
+    });
+
+    recorder.stop();
+    await done;
+    video.pause();
+    if(audioEl) audioEl.pause();
+    if(audioCtx) audioCtx.close();
+
+    const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
+    const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = cardId + '.' + ext;
+    link.click();
+    setProg('Done — downloaded.');
+  }catch(e){
+    console.error(e);
+    setProg('Export failed.');
+    setStatus('Video export failed: ' + e.message, true);
+  } finally {
+    btnEl.disabled = false;
+    btnEl.textContent = origLabel;
+  }
+}
+
+// ---------- batch generation ----------
+document.getElementById('generateBtn').addEventListener('click', async () => {
+  const key = apiKeyInput.value.trim();
+  const source = sourceSelect.value;
+  const pageName = pageNameInput.value.trim() || 'Cat Den';
+  const n = Math.max(1, Math.min(20, parseInt(document.getElementById('batchsize').value) || 6));
+
+  if(!key){ setStatus('Enter your Pixabay or Pexels API key first.', true); return; }
+  localStorage.setItem('catden_apikey', key);
+  localStorage.setItem('catden_source', source);
+  localStorage.setItem('catden_pagename', pageName);
+
+  const genBtn = document.getElementById('generateBtn');
+  genBtn.disabled = true;
+  setStatus(`Fetching ${n} fresh ${mode === 'photo' ? 'photos' : 'videos'} and pairing them with facts...`);
+
+  const facts = pickFacts(n);
+  let made = 0, failed = 0;
+
+  for(let i=0;i<n;i++){
+    try{
+      const m = await fetchMedia(source, mode);
+      cardCounter++;
+      const cardId = 'card_' + Date.now() + '_' + cardCounter;
+      const el = buildCard(m.url, facts[i], pageName, cardId, mode);
+      grid.appendChild(el);
+      made++;
+    }catch(e){
+      failed++;
+      console.error(e);
+    }
+    setStatus(`Generated ${made} of ${n}` + (failed ? `, ${failed} failed` : '') + '...');
+  }
+
+  genBtn.disabled = false;
+  setStatus(`Done. Added ${made} new poster${made===1?'':'s'}${failed ? `, ${failed} failed (check your API key or rate limit)` : ''}. Click a headline to edit it, then download.`, failed>0 && made===0);
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  grid.innerHTML = '';
+  setStatus('Cleared the current batch. Your fact/media history is remembered, so future batches stay fresh.');
+});
+
+document.getElementById('downloadAllBtn').addEventListener('click', async () => {
+  const stages = grid.querySelectorAll('.stage');
+  if(stages.length === 0){ setStatus('Nothing to download yet, generate a batch first.', true); return; }
+  setStatus('Packaging ' + stages.length + ' files into a ZIP, please keep this tab open...');
+  const zip = new JSZip();
+  let i = 0;
+  for(const stage of stages){
+    i++;
+    const cardMode = stage.dataset.mode;
+    const cardEl = stage.querySelector('.poster');
+    try{
+      if(cardMode === 'photo'){
+        if(document.activeElement) document.activeElement.blur();
+        const orig = cardEl.style.transform;
+        cardEl.style.transform = 'none';
+        const canvas = await html2canvas(cardEl, { backgroundColor:null, width:1080, height:1350, scale:2, useCORS:true });
+        cardEl.style.transform = orig;
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+        zip.file('cat-den-post-' + i + '.png', blob);
+      } else {
+        const video = cardEl.querySelector('video');
+        const pageName = cardEl.querySelector('.tag').textContent.trim();
+        const hookText = cardEl.querySelector('.hook').textContent;
+        const blob = await recordVideoBlob(video, pageName, hookText);
+        const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
+        zip.file('cat-den-video-' + i + '.' + ext, blob);
+      }
+    }catch(e){
+      console.error(e);
+      setStatus('Item ' + i + ' failed: ' + e.message + ' — continuing with the rest.', true);
+    }
+    setStatus('Packaged ' + i + ' of ' + stages.length + '...');
+  }
+  const content = await zip.generateAsync({type:'blob'});
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(content);
+  link.download = 'cat-den-posts.zip';
+  link.click();
+  setStatus('ZIP downloaded with ' + stages.length + ' file(s).');
+});
+
+async function recordVideoBlob(video, pageName, hookText){
+  const W = 1080, H = 1920;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  await document.fonts.load('700 80px "Baloo 2"');
+  await document.fonts.load('700 32px "Nunito"');
+  const mimeType = pickSupportedMime();
+  if(!mimeType) throw new Error('This browser cannot record video.');
+  const stream = canvas.captureStream(30);
+
+  let audioCtx=null, audioEl=null, gainNode=null;
+  const duration = isFinite(video.duration) && video.duration>0 ? video.duration : 8;
+  const fadeStart = Math.max(duration-2, 0.1);
+  if(musicFile){
+    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    audioEl = new Audio(URL.createObjectURL(musicFile));
+    audioEl.loop = true;
+    await audioEl.play().catch(()=>{});
+    const srcNode = audioCtx.createMediaElementSource(audioEl);
+    gainNode = audioCtx.createGain();
+    gainNode.gain.value = 0.55;
+    const destNode = audioCtx.createMediaStreamDestination();
+    srcNode.connect(gainNode).connect(destNode);
+    stream.addTrack(destNode.stream.getAudioTracks()[0]);
+    gainNode.gain.setValueAtTime(0.55, audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(0.55, audioCtx.currentTime + fadeStart);
+    gainNode.gain.linearRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+  }
+
+  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 6_000_000 });
+  const chunks = [];
+  recorder.ondataavailable = (e) => { if(e.data && e.data.size>0) chunks.push(e.data); };
+  const done = new Promise((resolve) => { recorder.onstop = resolve; });
+
+  video.currentTime = 0;
+  await video.play().catch(()=>{});
+  const naturalW = video.videoWidth || 1080, naturalH = video.videoHeight || 1920;
+
+  recorder.start();
+  const startTime = performance.now();
+  await new Promise((resolve) => {
+    function frame(){
+      const elapsed = (performance.now() - startTime) / 1000;
+      drawCover(ctx, video, W, H, naturalW, naturalH);
+      drawOverlay(ctx, pageName, hookText, W, H);
+      if(elapsed < duration){ requestAnimationFrame(frame); } else { resolve(); }
+    }
+    requestAnimationFrame(frame);
+  });
+  recorder.stop();
+  await done;
+  video.pause();
+  if(audioEl) audioEl.pause();
+  if(audioCtx) audioCtx.close();
+  return new Blob(chunks, { type: mimeType.split(';')[0] });
+}
+</script>
+</body>
+</html>
